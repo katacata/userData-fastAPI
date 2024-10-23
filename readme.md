@@ -1,7 +1,15 @@
-pipreqs /path/to/project
 
-pip install
+Activate virtual environment
+>cd app
+> 
+>python3 -m venv env
+>
+> source env/bin/activate
+ 
+Install dependencies
+>pipreqs /path/to/project
+> 
+>pip install
 
-cd app
-
-python3 main.py
+Start the API server
+>python3 main.py

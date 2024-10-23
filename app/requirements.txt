@@ -1,3 +1,5 @@
-data_processing==0.1.4
-fastapi==0.115.2
+fastapi==0.115.3
+numpy==2.1.2
 pandas==2.2.3
+pydantic==2.9.2
+SQLAlchemy==2.0.36

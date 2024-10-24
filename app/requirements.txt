@@ -1,3 +1,4 @@
+app==0.0.1
 fastapi==0.115.3
 numpy==2.1.2
 pandas==2.2.3

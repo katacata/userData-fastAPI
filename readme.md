@@ -14,4 +14,9 @@ Install dependencies
 >pip3 install -r requirements.txt
 
 Start the API server
->python3 main.py
+>pip3 install uvicorn
+> 
+>uvicorn main:app --reload
+
+For mysql
+>pip install mysqlclient

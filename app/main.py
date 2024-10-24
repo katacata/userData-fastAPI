@@ -12,10 +12,10 @@ app.include_router(get_she_member_router)
 async def root():
     return {"message": "Welcome to the API!"}
 
-@app.on_event("startup")
-async def startup():
-    startup_db()
-
-@app.on_event("shutdown")
-async def shutdown():
-    shutdown_db()
+# @app.on_event("startup")
+# async def startup():
+#     startup_db()
+#
+# @app.on_event("shutdown")
+# async def shutdown():
+#     shutdown_db()

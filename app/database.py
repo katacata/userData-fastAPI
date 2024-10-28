@@ -10,7 +10,7 @@ Base = declarative_base()
 
 # Create URL object
 database_url = sa.engine.URL(Settings.DB_DRIVER, Settings.DB_USER, Settings.DB_PASSWORD,
-    Settings.DB_HOST, Settings.DB_PORT, Settings.DB_NAME, {})
+    Settings.DB_HOST, Settings.DB_PORT, Settings.DB_CAMPAIGN_NAME, {})
 
 # Create engine and session
 engine = create_engine(database_url)

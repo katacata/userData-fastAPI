@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, MetaData, Table
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, MetaData, Table, Boolean, insert, select, delete
 import sqlalchemy as sa
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -14,6 +14,7 @@ database_url = sa.engine.URL(Settings.DB_DRIVER, Settings.DB_USER, Settings.DB_P
 
 # Create engine and session
 engine = create_engine(database_url)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
@@ -23,27 +24,48 @@ def get_db():
     finally:
         db.close()
 
+from sqlalchemy import MetaData, Table, Column, Integer, String, Boolean, insert
+from sqlalchemy.engine import Engine
+
 def initialize_database_schema():
     metadata = MetaData()
 
-    # Define models
-    class User(Base):
-        __tablename__ = 'users'
-        id = Column(Integer, primary_key=True, index=True)
-        username = Column(String, unique=True, index=True)
-        email = Column(String, unique=True, index=True)
-        hashed_password = Column(String)
+    conn = engine.connect()
 
-    class Post(Base):
-        __tablename__ = 'posts'
-        id = Column(Integer, primary_key=True, index=True)
-        title = Column(String, index=True)
-        content = Column(String)
-        author_id = Column(Integer, ForeignKey('users.id'))
+    # Create table
+    Student = Table('Student', metadata,
+                    Column('Id', Integer(), primary_key=True),
+                    Column('Name', String(255), nullable=False),
+                    Column('Major', String(255), default="Math"),
+                    Column('Pass', Boolean(), default=True)
+                    )
 
-    # Create tables if they don't exist
+    delete_stmt = delete(Student)
+    result = conn.execute(delete_stmt)
+    print(f"Cleared {result.rowcount} rows from the Student table")
+
     metadata.create_all(engine)
-    print("initialize_database_schema finished")
+    print("Table created")
+
+    # Insert rows
+    query = insert(Student)
+    values_list = [{'Id': 1, 'Name': 'Nisha', 'Major': "Science", 'Pass': False},
+                   {'Id': 2, 'Name': 'Natasha', 'Major': "Math", 'Pass': True},
+                   {'Id': 3, 'Name': 'Ben', 'Major': "English", 'Pass': False}]
+
+    result = conn.execute(query, values_list)
+    print(f"Inserted {result.rowcount} rows")
+    conn.commit()
+
+
+    # Query the table
+    output = conn.execute(Student.select()).fetchall()
+    print("Query result:")
+    for row in output:
+        print(row)
+
+    conn.close()
+    print("Connection closed")
 
 def add_table(table_name: str, columns: List[tuple]):
     """
@@ -92,7 +114,7 @@ def add_new_column_to_existing_table():
 initialize_database_schema()
 
 # # Create new table
-create_new_table()
+# create_new_table()
 
 # # Add new column to existing table
 # add_new_column_to_existing_table()

@@ -27,9 +27,6 @@ engine = create_engine(database_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-from sqlalchemy import MetaData, Table, select, text
-from sqlalchemy.engine import Engine
-
 def get_she_member():
     metadata = MetaData()
 

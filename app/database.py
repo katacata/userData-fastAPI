@@ -33,36 +33,44 @@ def initialize_database_schema():
     conn = engine.connect()
 
     # Create table
-    Student = Table('Student', metadata,
+    Student_meta = Table('Student_meta', metadata,
                     Column('Id', Integer(), primary_key=True),
                     Column('Name', String(255), nullable=False),
                     Column('Major', String(255), default="Math"),
                     Column('Pass', Boolean(), default=True)
                     )
 
-    delete_stmt = delete(Student)
-    result = conn.execute(delete_stmt)
-    print(f"Cleared {result.rowcount} rows from the Student table")
+    # Create table
+    Student_record = Table('Student_record', metadata,
+                    Column('Id', Integer(), primary_key=True),
+                    Column('Name', String(255), nullable=False),
+                    Column('Major', String(255), default="Math"),
+                    Column('Pass', Boolean(), default=True)
+                    )
+
+#     delete_stmt = delete(Student)
+#     result = conn.execute(delete_stmt)
+#     print(f"Cleared {result.rowcount} rows from the Student table")
 
     metadata.create_all(engine)
     print("Table created")
 
-    # Insert rows
-    query = insert(Student)
-    values_list = [{'Id': 1, 'Name': 'Nisha', 'Major': "Science", 'Pass': False},
-                   {'Id': 2, 'Name': 'Natasha', 'Major': "Math", 'Pass': True},
-                   {'Id': 3, 'Name': 'Ben', 'Major': "English", 'Pass': False}]
+#     # Insert rows
+#     query = insert(Student)
+#     values_list = [{'Id': 1, 'Name': 'Nisha', 'Major': "Science", 'Pass': False},
+#                    {'Id': 2, 'Name': 'Natasha', 'Major': "Math", 'Pass': True},
+#                    {'Id': 3, 'Name': 'Ben', 'Major': "English", 'Pass': False}]
+#
+#     result = conn.execute(query, values_list)
+#     print(f"Inserted {result.rowcount} rows")
+#     conn.commit()
 
-    result = conn.execute(query, values_list)
-    print(f"Inserted {result.rowcount} rows")
-    conn.commit()
 
-
-    # Query the table
-    output = conn.execute(Student.select()).fetchall()
-    print("Query result:")
-    for row in output:
-        print(row)
+#     # Query the table
+#     output = conn.execute(Student.select()).fetchall()
+#     print("Query result:")
+#     for row in output:
+#         print(row)
 
     conn.close()
     print("Connection closed")

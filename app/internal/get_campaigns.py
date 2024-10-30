@@ -64,34 +64,31 @@ def get_db_by_table_name(table_name):
     return data
 
 
-def process_directory(table_names):
-    df1 = get_db_by_table_name(table_names[0])
-    print("df1: \n" + df1.to_string(index=False))
+def process_directory(table_names, event_name):
     if(len(table_names) != 2): return None
+    df1 = get_db_by_table_name(table_names[0])
+#     print("df1: \n" + df1.to_string(index=False))
     df2 = get_db_by_table_name(table_names[1])
 
-    return None
+    df2 = df2.drop_duplicates(subset=['record_id', 'meta_key'], keep='first')
+    df2 = df2.pivot(index='record_id', columns='meta_key', values='meta_value')
+    df2.reset_index(inplace=True)
+    df2 = df2.rename(columns={'record_id': 'id'})
 
-#
-#     df2 = df2.drop_duplicates(subset=['record_id', 'meta_key'], keep='first')
-#     df2 = df2.pivot(index='record_id', columns='meta_key', values='meta_value')
-#     df2.reset_index(inplace=True)
-#     df2 = df2.rename(columns={'record_id': 'id'})
-#
-#     df1['id'] = df1['id'].astype(str)
-#     df2['id'] = df2['id'].astype(str)
-#
-#     merged_df = pd.merge(df1, df2, on='id', how='outer')
-#
-#     required_columns = ['name', 'mobile', 'email', 'birth', 'age', 'byear', 'bmonth', 'work', 'gender', 'marriage', 'title']
-#     target_columns = []
-#     for column in required_columns:
-#         if column in merged_df:
-#             target_columns.append(column)
-#     final_df = merged_df[target_columns]
-#     final_df['event'] = event_name
-#
-#     return final_df
+    df1['id'] = df1['id'].astype(str)
+    df2['id'] = df2['id'].astype(str)
+
+    merged_df = pd.merge(df1, df2, on='id', how='outer')
+
+    required_columns = ['name', 'mobile', 'email', 'birth', 'age', 'byear', 'bmonth', 'work', 'gender', 'marriage', 'title']
+    target_columns = []
+    for column in required_columns:
+        if column in merged_df:
+            target_columns.append(column)
+    final_df = merged_df[target_columns]
+    final_df['event'] = event_name
+
+    return final_df
 
 def getSheMember():
     she_member = pd.read_csv(settings.DATA_DIR+'SheMember.csv',  on_bad_lines='skip')
@@ -124,94 +121,96 @@ def combine_directories():
     # Get table prefixes and groups
     prefix_groups = get_table_prefixes(engine)
 
+    result = []
     # Process each group of tables
     for prefix, table_names in prefix_groups.items():
-        result = []
         print("Prefix: " +  prefix)
         print("Table: " + str(table_names))
-        result.append(process_directory(sorted(table_names)))
+        result.append(process_directory(sorted(table_names, reverse=True), prefix))
         # Do something with the processed results for this group
-        print(f"Processed {len(result)} tables starting with '{prefix}'")
+        print(f"Processed tables starting with '{prefix}'")
+
+    print("Length: " + str(len(result)))
+    combined = pd.concat(result, ignore_index=True)
+    print(combined.head(100).to_string(index=False))
+
+#     return None
 
 
-    return None
+    combined['age'] = combined['age'].str.replace(r'[^\d\-,]', '', regex=True)
+    def calculate_midpoint(value, offset = 2):
+        match = re.match(r'^(\d+)-(\d+)$', str(value))
+        if match:
+            start, end = map(int, match.groups())
+            return  datetime.now().year - ((start + end) // 2 + offset)
+        match = re.match(r'^(\d+)$', str(value))
+        if match:
+            return  datetime.now().year - int(value)
+        return value
+    combined['age'] = combined['age'].apply(calculate_midpoint)
 
-#     combined = pd.concat(result, ignore_index=True)
-#
-#     combined['age'] = combined['age'].str.replace(r'[^\d\-,]', '', regex=True)
-#     def calculate_midpoint(value, offset = 2):
-#         match = re.match(r'^(\d+)-(\d+)$', str(value))
-#         if match:
-#             start, end = map(int, match.groups())
-#             return  datetime.now().year - ((start + end) // 2 + offset)
-#         match = re.match(r'^(\d+)$', str(value))
-#         if match:
-#             return  datetime.now().year - int(value)
-#         return value
-#     combined['age'] = combined['age'].apply(calculate_midpoint)
-#
-#     def map_title(title):
-#         title_map = {
-#             'MS': 'F',
-#             '小姐': 'F',
-#             '太太': 'F',
-#             'MR': 'M',
-#             '先生': 'M',
-#             'MRS': 'F'
-#         }
-#         return title_map.get(title, title)
-#     combined['title'] = combined['title'].map(map_title)
-#
-#
-# #     combined.to_csv('campaign_data.csv', index=False)
-# #     she_member = getSheMember()
-# #     combined = pd.concat([combined, she_member], ignore_index=True)
-#
-#     # Print column names for debugging
-#     print("Column names:")
-#     print(combined.columns.tolist())
-#
-#     members = []
-#     for _, row in combined.head(100)[['name', 'mobile', 'email', 'birth', 'age', 'byear', 'bmonth', 'work', 'gender', 'marriage', 'title']].iterrows():
-#         # Print name value for debugging
+    def map_title(title):
+        title_map = {
+            'MS': 'F',
+            '小姐': 'F',
+            '太太': 'F',
+            'MR': 'M',
+            '先生': 'M',
+            'MRS': 'F'
+        }
+        return title_map.get(title, title)
+    combined['title'] = combined['title'].map(map_title)
+
+
+#     combined.to_csv('campaign_data.csv', index=False)
+#     she_member = getSheMember()
+#     combined = pd.concat([combined, she_member], ignore_index=True)
+
+    # Print column names for debugging
+    print("Column names:")
+    print(combined.columns.tolist())
+
+    members = []
+    for _, row in combined[['name', 'mobile', 'email', 'birth', 'age', 'byear', 'bmonth', 'work', 'gender', 'marriage', 'title']].iterrows():
+        # Print name value for debugging
 #         print(f"Name value: {row['name']}")
-#
-#         # Handle NaN values
-#         name = str(row['name']) if pd.notna(row['name']) else None
-#         gender = str(row['gender']) if pd.notna(row['gender']) else None
-#         mobile = str(row['mobile']) if pd.notna(row['mobile']) else None
-#         email = str(row['email']) if pd.notna(row['email']) else None
-#         work = str(row['work']) if pd.notna(row['work']) else None
-#         gender = str(row['gender']) if pd.notna(row['gender']) else None
-#         marriage = str(row['marriage']) if pd.notna(row['marriage']) else None
-#         title = str(row['title']) if pd.notna(row['title']) else None
-#         birth = str(row['birth']) if pd.notna(row['birth']) else None
-#         age = str(row['age']) if pd.notna(row['age']) else None
-#
-#         # Convert byear and bmonth to integers, handling NaN values
-#         byear = int(row['byear']) if pd.notna(row['byear']) else None
-#         bmonth = int(row['bmonth']) if pd.notna(row['bmonth']) else None
-#
-#
-#         try:
-#             member = CamMember(
-#                 name = name,
-#                 gender = gender,
-#                 mobile = mobile,
-#                 email = email,
-#                 work = work,
-#                 marriage = marriage,
-#                 title = title,
-#                 byear = byear,
-#                 bmonth = bmonth,
-#                 birth = birth,
-#                 age = age,
-#             )
-#             members.append(member)
-#         except ValidationError as e:
-#             print(f"Validation error for row: {row}")
-#             print(f"Error details: {e}")
-#     return members
+
+        # Handle NaN values
+        name = str(row['name']) if pd.notna(row['name']) else None
+        gender = str(row['gender']) if pd.notna(row['gender']) else None
+        mobile = str(row['mobile']) if pd.notna(row['mobile']) else None
+        email = str(row['email']) if pd.notna(row['email']) else None
+        work = str(row['work']) if pd.notna(row['work']) else None
+        gender = str(row['gender']) if pd.notna(row['gender']) else None
+        marriage = str(row['marriage']) if pd.notna(row['marriage']) else None
+        title = str(row['title']) if pd.notna(row['title']) else None
+        birth = str(row['birth']) if pd.notna(row['birth']) else None
+        age = str(row['age']) if pd.notna(row['age']) else None
+
+        # Convert byear and bmonth to integers, handling NaN values
+        byear = int(row['byear']) if pd.notna(row['byear']) else None
+        bmonth = int(row['bmonth']) if pd.notna(row['bmonth']) else None
+
+
+        try:
+            member = CamMember(
+                name = name,
+                gender = gender,
+                mobile = mobile,
+                email = email,
+                work = work,
+                marriage = marriage,
+                title = title,
+                byear = byear,
+                bmonth = bmonth,
+                birth = birth,
+                age = age,
+            )
+            members.append(member)
+        except ValidationError as e:
+            print(f"Validation error for row: {row}")
+            print(f"Error details: {e}")
+    return members
 
 # Export functions
 __all__ = ["process_directory", "getSheMember","combine_directories"]

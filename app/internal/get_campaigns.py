@@ -132,10 +132,11 @@ def combine_directories():
         result.append(process_directory(sorted(table_names)))
         # Do something with the processed results for this group
         print(f"Processed {len(result)} tables starting with '{prefix}'")
+
+
     return None
 
 #     combined = pd.concat(result, ignore_index=True)
-#
 #
 #     combined['age'] = combined['age'].str.replace(r'[^\d\-,]', '', regex=True)
 #     def calculate_midpoint(value, offset = 2):

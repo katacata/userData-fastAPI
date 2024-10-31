@@ -32,10 +32,10 @@ class CamMember(BaseModel):
     name: Optional[str]
     mobile: Optional[str]
     email: Optional[str]
-    birth: Optional[str]
-    age: Optional[str]
-    byear: Optional[int]
-    bmonth: Optional[int]
+#     birth: Optional[str]
+#     age: Optional[str]
+    birth_year: Optional[str]
+    bmonth: Optional[str]
     gender: Optional[str]
     work: Optional[str]
     gender: Optional[str]
@@ -113,6 +113,64 @@ def get_table_prefixes(engine):
         prefix_groups[prefix].append(table_name)
     return prefix_groups
 
+def transform_data(df):
+
+    # Group by email and aggregate values
+    transformed_df = df.groupby('email').agg({
+        'name': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'mobile': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'birth': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'age': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'byear': lambda x: ', '.join(transform_byear(str(val)) for val in x[x.notnull()].unique()),
+        'bmonth': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'work': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'gender': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'marriage': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'title': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique()),
+        'event': lambda x: ', '.join(str(val) for val in x[x.notnull()].unique())
+    }).reset_index()
+
+    target_cols = ['birth', 'age', 'byear']
+    def concatenate_strings(series):
+        s = ', '.join(map(str, series))
+        parts = s.split(', ')
+        parts = [part.strip() for part in parts if part]
+        return ', '.join(parts)
+
+    # Concatenate the target columns
+    transformed_df['birth_year'] = transformed_df[target_cols].apply(concatenate_strings, axis=1)
+
+    # Drop the original columns
+    transformed_df = transformed_df.drop(target_cols, axis=1)
+
+    # Remove trailing commas
+    for col in transformed_df.columns:
+        if col != 'email':
+            transformed_df[col] = transformed_df[col].str.rstrip(',')
+
+    print(transformed_df.to_string)
+    return transformed_df
+
+def transform_byear(year):
+    bYearList = [
+        "1970", "1971", "1972", "1973", "1974", "1975",
+        "1976", "1977", "1978", "1979", "1980", "1981",
+        "1982", "1983", "1984", "1985", "1986", "1987",
+        "1988", "1989", "1990", "1991", "1992", "1993",
+        "1994", "1995", "1996", "1997", "1998", "1999",
+        "2000", "2001", "2002", "2003", "2004", "2005",
+        "2006", "2007", "2008", "2009", "2010", "2011",
+        "2012", "2013", "2014", "2015"
+    ]
+
+    try:
+        year_int = int(year)
+        if year_int < len(bYearList):
+            return bYearList[year_int]
+        else:
+            return year
+    except ValueError:
+        return year
 
 def combine_directories():
     # Establish database connection
@@ -170,26 +228,26 @@ def combine_directories():
     print("Column names:")
     print(combined.columns.tolist())
 
+    combined = transform_data(combined)
+    combined.to_csv("output.csv", index=False)
+
     members = []
-    for _, row in combined[['name', 'mobile', 'email', 'birth', 'age', 'byear', 'bmonth', 'work', 'gender', 'marriage', 'title']].iterrows():
+    for _, row in combined[['name', 'mobile', 'email', 'birth_year', 'bmonth', 'work', 'gender', 'marriage', 'title']].iterrows():
         # Print name value for debugging
 #         print(f"Name value: {row['name']}")
 
         # Handle NaN values
         name = str(row['name']) if pd.notna(row['name']) else None
-        gender = str(row['gender']) if pd.notna(row['gender']) else None
         mobile = str(row['mobile']) if pd.notna(row['mobile']) else None
         email = str(row['email']) if pd.notna(row['email']) else None
         work = str(row['work']) if pd.notna(row['work']) else None
         gender = str(row['gender']) if pd.notna(row['gender']) else None
         marriage = str(row['marriage']) if pd.notna(row['marriage']) else None
         title = str(row['title']) if pd.notna(row['title']) else None
-        birth = str(row['birth']) if pd.notna(row['birth']) else None
-        age = str(row['age']) if pd.notna(row['age']) else None
-
-        # Convert byear and bmonth to integers, handling NaN values
-        byear = int(row['byear']) if pd.notna(row['byear']) else None
-        bmonth = int(row['bmonth']) if pd.notna(row['bmonth']) else None
+#         birth = str(row['birth']) if pd.notna(row['birth']) else None
+#         age = str(row['age']) if pd.notna(row['age']) else None
+        birth_year = str(row['birth_year']) if pd.notna(row['birth_year']) else None
+        bmonth = str(row['bmonth']) if pd.notna(row['bmonth']) else None
 
 
         try:
@@ -201,15 +259,14 @@ def combine_directories():
                 work = work,
                 marriage = marriage,
                 title = title,
-                byear = byear,
+                birth_year = birth_year,
                 bmonth = bmonth,
-                birth = birth,
-                age = age,
             )
             members.append(member)
         except ValidationError as e:
             print(f"Validation error for row: {row}")
             print(f"Error details: {e}")
+
     return members
 
 # Export functions

@@ -148,6 +148,22 @@ def transform_data(df):
         if col != 'email':
             transformed_df[col] = transformed_df[col].str.rstrip(',')
 
+    def clean_field(value):
+        if pd.isna(value):
+            return None
+
+        # Split the value into a list
+        values = str(value).split(',')
+
+        # Clean each value and join them back
+        cleaned_values = [re.sub(r'\.0+$', '', v.strip()) for v in values if v.strip()]
+
+        # Return the joined cleaned values or None if empty
+        return ', '.join(cleaned_values) if cleaned_values else None
+
+    transformed_df['mobile'] = transformed_df['mobile'].apply(clean_field)
+    transformed_df['birth_year'] = transformed_df['birth_year'].apply(clean_field)
+
     print(transformed_df.to_string)
     return transformed_df
 

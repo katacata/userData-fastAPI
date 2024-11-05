@@ -28,6 +28,15 @@ engine = create_engine(database_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Create URL object
+result_url = sa.engine.URL(Settings.DB_DRIVER, Settings.DB_USER, Settings.DB_PASSWORD,
+    Settings.DB_HOST, Settings.DB_PORT, Settings.DB_RESULT_NAME, {})
+
+# Create engine and session
+result_engine = create_engine(result_url)
+
+result_SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=result_engine)
+
 class CamMember(BaseModel):
     name: Optional[str]
     mobile: Optional[str]
@@ -36,11 +45,11 @@ class CamMember(BaseModel):
 #     age: Optional[str]
     birth_year: Optional[str]
     bmonth: Optional[str]
-    gender: Optional[str]
     work: Optional[str]
-    gender: Optional[str]
+    event: Optional[str]
+    gender_combined: Optional[str]
     marriage: Optional[str]
-    title: Optional[str]
+#     title: Optional[str]
 
 
 def get_db_by_table_name(table_name):
@@ -139,6 +148,8 @@ def transform_data(df):
 
     # Concatenate the target columns
     transformed_df['birth_year'] = transformed_df[target_cols].apply(concatenate_strings, axis=1)
+    target_cols = ['gender', 'title']
+    transformed_df['gender_combined'] = transformed_df[target_cols].apply(concatenate_strings, axis=1)
 
     # Drop the original columns
     transformed_df = transformed_df.drop(target_cols, axis=1)
@@ -187,6 +198,57 @@ def transform_byear(year):
             return year
     except ValueError:
         return year
+
+def create_result_table(members):
+    metadata = MetaData()
+
+    conn = result_engine.connect()
+
+    inspector = sa.inspect(result_engine)
+    if inspector.has_table('result'):
+        print("Table 'result' already exists. Dropping...")
+        conn.execute(sa.text(f"DROP TABLE IF EXISTS result"))
+        print("Old table dropped.")
+
+    # Create table
+    result = Table('result', metadata,
+                    Column('email',  String(255),  default=''),
+                    Column('name', String(255), default=''),
+                    Column('mobile', String(255), default=''),
+                    Column('birth_year', String(255), default=''),
+                    Column('bmonth', String(255), default=''),
+                    Column('work', String(255), default=''),
+                    Column('gender_combined', String(255), default=''),
+                    Column('marriage', String(255), default=''),
+                    Column('event', String(255), default=''),
+                    )
+
+#     print(str(member_dicts))
+    metadata.create_all(result_engine)
+    print("Table created")
+
+    member_dicts = []
+    for member in members:
+        member_dict = {
+            'email': member.email,
+            'name': member.name,
+            'mobile': member.mobile,
+            'birth_year': member.birth_year,
+            'bmonth': member.bmonth,
+            'work': member.work,
+            'gender_combined': member.gender_combined,
+            'marriage': member.marriage,
+            'event': member.event,
+        }
+        member_dicts.append(member_dict)
+
+    # Insert rows
+    query = insert(result)
+    execution = conn.execute(query, member_dicts)
+    conn.commit()
+
+    conn.close()
+
 
 def combine_directories():
     # Establish database connection
@@ -248,7 +310,7 @@ def combine_directories():
     combined.to_csv("output.csv", index=False)
 
     members = []
-    for _, row in combined[['name', 'mobile', 'email', 'birth_year', 'bmonth', 'work', 'gender', 'marriage', 'title']].iterrows():
+    for _, row in combined[['name', 'mobile', 'email', 'birth_year', 'bmonth', 'work', 'gender_combined', 'marriage', 'event']].iterrows():
         # Print name value for debugging
 #         print(f"Name value: {row['name']}")
 
@@ -257,32 +319,34 @@ def combine_directories():
         mobile = str(row['mobile']) if pd.notna(row['mobile']) else None
         email = str(row['email']) if pd.notna(row['email']) else None
         work = str(row['work']) if pd.notna(row['work']) else None
-        gender = str(row['gender']) if pd.notna(row['gender']) else None
+        gender_combined = str(row['gender_combined']) if pd.notna(row['gender_combined']) else None
         marriage = str(row['marriage']) if pd.notna(row['marriage']) else None
-        title = str(row['title']) if pd.notna(row['title']) else None
+#         title = str(row['title']) if pd.notna(row['title']) else None
 #         birth = str(row['birth']) if pd.notna(row['birth']) else None
 #         age = str(row['age']) if pd.notna(row['age']) else None
         birth_year = str(row['birth_year']) if pd.notna(row['birth_year']) else None
         bmonth = str(row['bmonth']) if pd.notna(row['bmonth']) else None
+        event = str(row['event']) if pd.notna(row['event']) else None
 
 
         try:
             member = CamMember(
                 name = name,
-                gender = gender,
+                gender_combined = gender_combined,
                 mobile = mobile,
                 email = email,
                 work = work,
                 marriage = marriage,
-                title = title,
+#                 title = title,
                 birth_year = birth_year,
                 bmonth = bmonth,
+                event = event,
             )
             members.append(member)
         except ValidationError as e:
             print(f"Validation error for row: {row}")
             print(f"Error details: {e}")
-
+    create_result_table(members)
     return members
 
 # Export functions

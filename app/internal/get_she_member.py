@@ -48,6 +48,7 @@ def get_she_member():
         byear = int(row['byear']) if pd.notna(row['byear']) else None
         bmonth = int(row['bmonth']) if pd.notna(row['bmonth']) else None
 
+
         try:
             member = SheMember(
                 name=name,

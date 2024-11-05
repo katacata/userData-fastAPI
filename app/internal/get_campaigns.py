@@ -148,11 +148,25 @@ def transform_data(df):
 
     # Concatenate the target columns
     transformed_df['birth_year'] = transformed_df[target_cols].apply(concatenate_strings, axis=1)
+
+
     target_cols = ['gender', 'title']
     transformed_df['gender_combined'] = transformed_df[target_cols].apply(concatenate_strings, axis=1)
 
     # Drop the original columns
     transformed_df = transformed_df.drop(target_cols, axis=1)
+
+    def extract_year(value):
+        if isinstance(value, str):
+            if '-' in value:
+                return value.split('-')[0]
+            elif ',' in value:
+                return ','.join(part.split('-')[0] for part in value.split(',') if part)
+        elif isinstance(value, datetime):
+            return str(value.year)
+        return value
+
+    transformed_df['birth_year'] = transformed_df['birth_year'].apply(extract_year)
 
     # Remove trailing commas
     for col in transformed_df.columns:
@@ -172,7 +186,13 @@ def transform_data(df):
         # Return the joined cleaned values or None if empty
         return ', '.join(cleaned_values) if cleaned_values else None
 
-    transformed_df['mobile'] = transformed_df['mobile'].apply(clean_field)
+
+    def mobile_trim(value):
+        if(value):
+            return value[-8:] if len(value) > 8 else value
+        return value
+
+    transformed_df['mobile'] = transformed_df['mobile'].apply(clean_field).apply(mobile_trim)
     transformed_df['birth_year'] = transformed_df['birth_year'].apply(clean_field)
 
     print(transformed_df.to_string)
